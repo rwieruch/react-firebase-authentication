@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState } from 'react';
 import { withRouter } from 'react-router-dom';
 import { compose } from 'recompose';
 
@@ -22,7 +22,6 @@ const SignInPage = () => (
 const INITIAL_STATE = {
   email: '',
   password: '',
-  error: null,
 };
 
 const ERROR_CODE_ACCOUNT_EXISTS =
@@ -35,201 +34,167 @@ const ERROR_MSG_ACCOUNT_EXISTS = `
   your personal account page.
 `;
 
-class SignInFormBase extends Component {
-  constructor(props) {
-    super(props);
 
-    this.state = { ...INITIAL_STATE };
-  }
+const SignInFormBase = (props) => {
+  const [userInfo, setUserInfo] = useState(INITIAL_STATE);
+  const [error, setError] = useState(null);
 
-  onSubmit = event => {
-    const { email, password } = this.state;
-
-    this.props.firebase
+  const onSubmit = event => {
+    const { email, password } = userInfo;
+    props.firebase
       .doSignInWithEmailAndPassword(email, password)
       .then(() => {
-        this.setState({ ...INITIAL_STATE });
-        this.props.history.push(ROUTES.HOME);
+        setUserInfo(INITIAL_STATE)
+        props.history.push(ROUTES.HOME);
       })
       .catch(error => {
-        this.setState({ error });
+        setError(error)
       });
-
     event.preventDefault();
   };
 
-  onChange = event => {
-    this.setState({ [event.target.name]: event.target.value });
+  const onChange = event => {
+    const {name, value} = event.target;
+    setUserInfo((userInfo) => ({...userInfo, [name]: value}))
   };
 
-  render() {
-    const { email, password, error } = this.state;
-
-    const isInvalid = password === '' || email === '';
-
-    return (
-      <form onSubmit={this.onSubmit}>
-        <input
-          name="email"
-          value={email}
-          onChange={this.onChange}
-          type="text"
-          placeholder="Email Address"
-        />
-        <input
-          name="password"
-          value={password}
-          onChange={this.onChange}
-          type="password"
-          placeholder="Password"
-        />
-        <button disabled={isInvalid} type="submit">
-          Sign In
-        </button>
-
-        {error && <p>{error.message}</p>}
-      </form>
-    );
-  }
+  const isInvalid = userInfo.password === '' || userInfo.email === '';
+  return (
+    <form onSubmit={onSubmit}>
+      <input
+        name="email"
+        value={userInfo.email}
+        onChange={onChange}
+        type="text"
+        placeholder="Email Address"
+      />
+      <input
+        name="password"
+        value={userInfo.password}
+        onChange={onChange}
+        type="password"
+        placeholder="Password"
+      />
+      <button disabled={isInvalid} type="submit">
+        Sign In
+      </button>
+      {error && <p>{error.message}</p>}
+    </form>
+  );
 }
 
-class SignInGoogleBase extends Component {
-  constructor(props) {
-    super(props);
+const SignInGoogleBase = (props) => {
+  const [error, setError] = useState(null);
 
-    this.state = { error: null };
-  }
-
-  onSubmit = event => {
-    this.props.firebase
+  const onSubmit = (event) => {
+    props.firebase
       .doSignInWithGoogle()
       .then(socialAuthUser => {
         // Create a user in your Firebase Realtime Database too
-        return this.props.firebase.user(socialAuthUser.user.uid).set({
+        return props.firebase.user(socialAuthUser.user.uid).set({
           username: socialAuthUser.user.displayName,
           email: socialAuthUser.user.email,
           roles: {},
         });
       })
       .then(() => {
-        this.setState({ error: null });
-        this.props.history.push(ROUTES.HOME);
+        setError(null);
+        props.history.push(ROUTES.HOME);
       })
       .catch(error => {
         if (error.code === ERROR_CODE_ACCOUNT_EXISTS) {
           error.message = ERROR_MSG_ACCOUNT_EXISTS;
         }
-
-        this.setState({ error });
+        setError(error);
       });
 
     event.preventDefault();
   };
 
-  render() {
-    const { error } = this.state;
+  return (
+    <form onSubmit={onSubmit}>
+      <button type="submit">Sign In with Google</button>
 
-    return (
-      <form onSubmit={this.onSubmit}>
-        <button type="submit">Sign In with Google</button>
-
-        {error && <p>{error.message}</p>}
-      </form>
-    );
-  }
+      {error && <p>{error.message}</p>}
+    </form>
+  );
 }
 
-class SignInFacebookBase extends Component {
-  constructor(props) {
-    super(props);
+const SignInFacebookBase = (props) => {
+  const [error, setError] = useState(null);
 
-    this.state = { error: null };
-  }
-
-  onSubmit = event => {
-    this.props.firebase
+  const onSubmit = (event) => {
+    props.firebase
       .doSignInWithFacebook()
       .then(socialAuthUser => {
         // Create a user in your Firebase Realtime Database too
-        return this.props.firebase.user(socialAuthUser.user.uid).set({
-          username: socialAuthUser.additionalUserInfo.profile.name,
-          email: socialAuthUser.additionalUserInfo.profile.email,
+        return props.firebase.user(socialAuthUser.user.uid).set({
+          username: socialAuthUser.user.displayName,
+          email: socialAuthUser.user.email,
           roles: {},
         });
       })
       .then(() => {
-        this.setState({ error: null });
-        this.props.history.push(ROUTES.HOME);
+        setError(null);
+        props.history.push(ROUTES.HOME);
       })
       .catch(error => {
         if (error.code === ERROR_CODE_ACCOUNT_EXISTS) {
           error.message = ERROR_MSG_ACCOUNT_EXISTS;
         }
-
-        this.setState({ error });
+        setError(error);
       });
 
     event.preventDefault();
   };
 
-  render() {
-    const { error } = this.state;
+  return (
+    <form onSubmit={onSubmit}>
+      <button type="submit">Sign In with Facebook</button>
 
-    return (
-      <form onSubmit={this.onSubmit}>
-        <button type="submit">Sign In with Facebook</button>
-
-        {error && <p>{error.message}</p>}
-      </form>
-    );
-  }
+      {error && <p>{error.message}</p>}
+    </form>
+  );
 }
 
-class SignInTwitterBase extends Component {
-  constructor(props) {
-    super(props);
 
-    this.state = { error: null };
-  }
+const SignInTwitterBase = (props) => {
+  const [error, setError] = useState(null);
 
-  onSubmit = event => {
-    this.props.firebase
+  const onSubmit = (event) => {
+    props.firebase
       .doSignInWithTwitter()
       .then(socialAuthUser => {
         // Create a user in your Firebase Realtime Database too
-        return this.props.firebase.user(socialAuthUser.user.uid).set({
-          username: socialAuthUser.additionalUserInfo.profile.name,
-          email: socialAuthUser.additionalUserInfo.profile.email,
+        return props.firebase.user(socialAuthUser.user.uid).set({
+          username: socialAuthUser.user.displayName,
+          email: socialAuthUser.user.email,
           roles: {},
         });
       })
       .then(() => {
-        this.setState({ error: null });
-        this.props.history.push(ROUTES.HOME);
+        setError(null);
+        props.history.push(ROUTES.HOME);
       })
       .catch(error => {
         if (error.code === ERROR_CODE_ACCOUNT_EXISTS) {
           error.message = ERROR_MSG_ACCOUNT_EXISTS;
         }
-
-        this.setState({ error });
+        setError(error);
       });
 
     event.preventDefault();
   };
 
-  render() {
-    const { error } = this.state;
+  return (
+    <form onSubmit={onSubmit}>
+      <button type="submit">Sign In with Twitter</button>
 
-    return (
-      <form onSubmit={this.onSubmit}>
-        <button type="submit">Sign In with Twitter</button>
-
-        {error && <p>{error.message}</p>}
-      </form>
-    );
-  }
+      {error && <p>{error.message}</p>}
+    </form>
+  );
 }
+
 
 const SignInForm = compose(
   withRouter,
